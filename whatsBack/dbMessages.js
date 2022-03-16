@@ -1,10 +1,31 @@
 import mongoose from "mongoose";
 
-const whatssappSchema = mongoose.Schema({
-  message: String,
-  name: String,
-  timestamp: String,
-  received: Boolean,
-});
+const whatssappSchema = mongoose.Schema(
+  {
+    messages: {
+      type: [
+        {
+          type: new mongoose.Schema(
+            {
+              message: String,
+              sender: String,
+            },
+            { timestamps: true }
+          ),
+        },
+      ],
+      default: [],
+      require: true,
+    },
+    users: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "user",
+      },
+    ],
+    lastMessage: { type: String, default: "" },
+  },
+  { timestamps: true, new: true }
+);
 
-export default mongoose.model("messagecontents", whatssappSchema);
+export default mongoose.model("message", whatssappSchema);

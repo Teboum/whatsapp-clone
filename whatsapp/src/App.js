@@ -1,27 +1,17 @@
 import React, { useEffect, useState } from "react";
-import { BrowserRouter as Router,Routes, Route, Switch } from "react-router-dom";
 import "./App.css";
 import Sidebar from "./Sidebar";
 import Chat from "./Chat";
 import Pusher from "pusher-js";
 import axios from "./axios";
-import {io} from "socket.io-client"
 import Login from "./Login";
 import Home from "./Home";
-const socket =io("http://localhost:9000")
+import Cookies from "js-cookie";
+import { ChatState } from "./context/CharProvider";
 function App() {
-  const [messages, setMessages] = useState([]);
-  useEffect(() => {
-   (function(){
-      axios.get("/messages/sync").then(({data}) => {
-        setMessages(data);
-        socket.on('connect',()=>{console.log("connecte")})
-        socket.on('FromAPI',(newMessage)=> {console.log(messages,newMessage); setMessages(prev=>[...prev,newMessage])}) 
-      });
-      console.log("app","app");
-    })();
-  return socket.removeAllListeners()
-  }, []);
+  const [image, setImage] = useState(sessionStorage.getItem("image") || null);
+  const { user, setUser, setToken, token, setSelectedId } = ChatState();
+
   // useEffect(() => {
   //   // var pusher = new Pusher("b19265744ce797e7dc48", {
   //   //   cluster: "eu",
@@ -33,26 +23,30 @@ function App() {
   //   //   setMessages([...messages,newMessage]);
   //   // });
   //   console.log(messages);
-    
+
   //   })
   //   return () => {
   //     // channel.unbind_all();
   //     // channel.unsubscribe();
   //   };
   // }, []);
-
+  useEffect(() => {}, []);
+  useEffect(() => {
+    console.log(user);
+    return () => {};
+  }, [user]);
   return (
     <div className="app">
-     
-      <Router>
-        <Routes>
-        <Route exact path="/login" element={<Login/>} />
-         
-        <Route exact path="/" element={<Home messages={messages}/>} />
-        </Routes>
-      </Router>  
-       
-     
+      {user ? (
+        <Home />
+      ) : (
+        <Login
+          token={token}
+          setToken={setToken}
+          setUser={setUser}
+          setImage={setImage}
+        />
+      )}
     </div>
   );
 }
