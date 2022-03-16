@@ -22,6 +22,8 @@ const ChatProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
   const [remoteId, setRemoteId] = useState("");
 
+  const [friendList, setFriendList] = useState([]);
+
   return (
     <ChatContext.Provider
       value={{
@@ -39,6 +41,8 @@ const ChatProvider = ({ children }) => {
         setNotifications,
         remoteId,
         setRemoteId,
+        friendList,
+        setFriendList,
       }}
     >
       {children}

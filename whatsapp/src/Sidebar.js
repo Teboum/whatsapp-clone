@@ -24,26 +24,44 @@ function Sidebar() {
     search,
     setSearch,
     setRemoteId,
+    friendList,
+    setFriendList,
   } = ChatState();
   const searchChange = (e) => {
     setInput(e.target.value);
+    if (e.target.value === "") {
+      setFriendListSearch([]);
+    } else {
+      axios
+        .get("/search-friend", {
+          params: { value: e.target.value, userId: user._id },
+        })
+        .then(({ data }) => {
+          setFriendListSearch(data);
+        })
+        .catch((err) => console.log(err));
+    }
+  };
+  useEffect(() => {
     axios
-      .get("/search-friend", {
-        params: { value: e.target.value, userId: user._id },
+      .get(`/friend-list?_id=${user._id}`, {
+        headers: { Authorization: "Bearer " + token },
       })
       .then(({ data }) => {
-        setFriendListSearch(data);
-      })
-      .catch((err) => console.log(err));
-  };
+        console.log(data);
+        setFriendList(data.chats);
+      });
 
+    return () => {};
+  }, []);
   const openChat = async (id) => {
     try {
       const { data } = await axios.get(`/set-chat?contactId=${id}`, {
-        headers: { authorization: "Bearer " + token },
+        headers: { Authorization: "Bearer " + token },
       });
       sessionStorage.setItem("selectedChat", data);
       setSelectedChat(data);
+      setFriendListSearch([]);
       setSearch(!search);
     } catch (err) {
       console.log(err);
@@ -110,9 +128,13 @@ function Sidebar() {
         </div>
       </div>
       <div className="sidebar__chats">
-        <SidebarChat />
-        <SidebarChat />
-        <SidebarChat />
+        {friendList.map((elem, i) =>
+          elem.users.map((ey, iy) => {
+            if (ey._id !== user._id) {
+              return <SidebarChat key={i} chat={elem} user={ey} />;
+            }
+          })
+        )}
       </div>
     </div>
   );

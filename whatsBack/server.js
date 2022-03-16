@@ -287,6 +287,33 @@ app.get(
     }
   })
 );
+
+app.get(
+  "/friend-list",
+  isLogin,
+  asyncHandler(async (req, res, next) => {
+    Messages.find({
+      users: req.query._id,
+    })
+      .select("-messages")
+      .populate("users", "-password")
+      .exec((err, messages) => {
+        if (err) {
+          res.status(500).json({ error: err.message });
+        }
+        console.log("%j", messages);
+        messages.map((e, i) => {
+          e.users.map((ey, iy) => {
+            messages[i].users[iy].picture =
+              ey.picture != "picture"
+                ? fs.readFileSync("./pictures/" + e.picture)
+                : "picture";
+          });
+        });
+        res.status(200).json({ chats: messages });
+      });
+  })
+);
 //listen
 httpServer.listen(port, () => console.log(`Listening on port: ${port}`));
 

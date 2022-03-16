@@ -31,6 +31,7 @@ function Chat() {
     setNotifications,
     remoteId,
     setRemoteId,
+    setFriendList,
   } = ChatState();
 
   useEffect(() => {
@@ -56,6 +57,27 @@ function Chat() {
       } else {
         setNotifications([...notifications, newMessage]);
       }
+      setFriendList((prev) => {
+        const latestMessage = [...prev];
+        latestMessage[
+          prev.map((e) => e._id).indexOf(newMessage._id)
+        ].lastMessage = newMessage.message;
+        latestMessage.sort((x, y) => {
+          console.log(x);
+          return x._id ===
+            latestMessage[prev.map((e) => e._id).indexOf(newMessage._id)]._id
+            ? -1
+            : y ===
+              latestMessage[prev.map((e) => e._id).indexOf(newMessage._id)]._id
+            ? 1
+            : 0;
+        });
+        console.log(
+          latestMessage[prev.map((e) => e._id).indexOf(newMessage._id)]._id,
+          newMessage._id
+        );
+        return latestMessage;
+      });
     });
     socket.on("inRoom", (id) => {
       console.log(inRoom);
@@ -131,8 +153,32 @@ function Chat() {
         message: input,
         sender: user._id,
         remoteId: selectedChat.users.find((e) => e._id !== user._id)._id,
+        _id: selectedChat._id,
       });
+
       setMessages([...messages, data]);
+      setFriendList((prev) => {
+        const latestMessage = [...prev];
+        latestMessage[
+          prev.map((e) => e._id).indexOf(selectedChat._id)
+        ].lastMessage = data.message;
+        latestMessage.sort((x, y) => {
+          console.log(x);
+          return x._id ===
+            latestMessage[prev.map((e) => e._id).indexOf(selectedChat._id)]._id
+            ? -1
+            : y ===
+              latestMessage[prev.map((e) => e._id).indexOf(selectedChat._id)]
+                ._id
+            ? 1
+            : 0;
+        });
+        console.log(
+          latestMessage[prev.map((e) => e._id).indexOf(selectedChat._id)]._id,
+          selectedChat._id
+        );
+        return latestMessage;
+      });
     } catch (err) {
       console.log(err);
     }
