@@ -87,14 +87,15 @@ mongoose.connect(dbURL, {
 app.get("/", (req, res) => res.status(200).send("hello world"));
 
 app.get("/messages/sync", (req, res) => {
+  console.log(req.query.limit * 10);
   Messages.findById(req.query.chatId)
     .select("_id messages")
-    .then((data) => {
+    .slice("messages", 10 * req.query.limit)
+    .exec(function (err, data) {
+      if (err) res.status(500).json({ error: err.message });
       res.status(200).send(data.messages);
-    })
-    .catch((err) => res.status(500).json({ error: err.message }));
+    });
 });
-
 app.post("/messages/new", async (req, res) => {
   const dbMessage = { ...req.body };
   delete dbMessage.userId;
@@ -121,19 +122,6 @@ app.post("/messages/new", async (req, res) => {
 });
 app.post(
   "/login",
-  multer({
-    storage: multer.diskStorage({
-      destination: (req, file, cb) => {
-        console.log(file, "file1");
-        cb(null, "pictures");
-      },
-      filename: (req, file, cb) => {
-        console.log(file, "file2");
-        file.originalname = Date.now() + "-" + file.originalname;
-        cb(null, file.originalname);
-      },
-    }),
-  }).single("picture"),
   check("name").custom((value, { req }) => {
     if (!/^[a-zA-Z|| ]+$/.test(req.body.name)) throw "Name Format Incorrect !";
     else return true;
@@ -144,8 +132,8 @@ app.post(
     else return true;
   }),
   async (req, res, next) => {
+    console.log(req.body, "body");
     const user = req.body;
-    user.picture = req.file ? req.file.originalname : "picture";
     var random = Math.floor(100000 + Math.random() * 900000);
     // const Client=client(
     //   process.env.TWILIO_ACCOUNT_SID,
@@ -174,8 +162,8 @@ app.post(
     .withMessage("Le code est composé de chiffres"),
   async (req, res, next) => {
     if (+req.body.code === req.user.code) {
-      delete req.user.code;
       req.user.picture === "picture" && delete req.user.picture;
+      delete req.user.code;
       req.user.active = true;
       console.log(req.user);
       USER.findOneAndUpdate(
@@ -187,18 +175,12 @@ app.post(
             console.log(err);
             res.status(500).json({ error: err });
           }
-          const image =
-            doc.picture != "picture"
-              ? fs.readFileSync("./pictures/" + doc.picture)
-              : "picture";
+
           doc = doc.toObject();
-          delete doc.picture;
           delete doc.__v;
           const token = getTokenLogin(doc);
           console.log(token, "token");
-          return res
-            .status(200)
-            .json({ user: { ...doc }, image: image, token: token });
+          return res.status(200).json({ user: { ...doc }, token: token });
         }
       );
     } else {
@@ -265,20 +247,9 @@ app.get(
         chat = await Messages.findById(chat._id)
           .select("-messages")
           .populate("users", "-password");
-        chat.users.map((e, i) => {
-          chat.users[i].picture =
-            e.picture != "picture"
-              ? fs.readFileSync("./pictures/" + e.picture)
-              : "picture";
-        });
+
         res.status(200).json(chat);
       } else {
-        chat.users.map((e, i) => {
-          chat.users[i].picture =
-            e.picture != "picture"
-              ? fs.readFileSync("./pictures/" + e.picture)
-              : "picture";
-        });
         res.status(200).send(chat);
       }
     } catch (err) {
@@ -293,23 +264,15 @@ app.get(
   isLogin,
   asyncHandler(async (req, res, next) => {
     Messages.find({
-      users: req.query._id,
+      $and: [{ users: req.query._id }],
     })
       .select("-messages")
       .populate("users", "-password")
+      .sort({ updatedAt: -1 })
       .exec((err, messages) => {
         if (err) {
           res.status(500).json({ error: err.message });
         }
-        console.log("%j", messages);
-        messages.map((e, i) => {
-          e.users.map((ey, iy) => {
-            messages[i].users[iy].picture =
-              ey.picture != "picture"
-                ? fs.readFileSync("./pictures/" + e.picture)
-                : "picture";
-          });
-        });
         res.status(200).json({ chats: messages });
       });
   })
@@ -330,20 +293,16 @@ let myId;
 io.on("connection", (socket) => {
   socket.on("setup", (id) => {
     myId = id;
-    console.log(id);
     socket.join(id);
   });
   socket.on("newMessage", (newMessage) => {
-    console.log(newMessage);
     socket.in(newMessage.remoteId).emit("message received", newMessage);
   });
 
   socket.on("inRoom", (ids) => {
-    console.log(ids, "in");
     socket.in(ids.remoteId).emit("inRoom", ids.id);
   });
   socket.on("outRoom", (ids) => {
-    console.log(ids, "out");
     socket.in(ids.remoteId).emit("leave", ids.id);
   });
 

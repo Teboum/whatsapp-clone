@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 
+var limit;
 const whatssappSchema = mongoose.Schema(
   {
     messages: {

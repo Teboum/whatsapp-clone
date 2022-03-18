@@ -10,10 +10,11 @@ import { ChatState } from "./context/CharProvider";
 import { Buffer } from "buffer";
 
 function Login({}) {
-  const [picture, setPicture] = useState({});
+  const [picture, setPicture] = useState();
   const [picURL, setPicURL] = useState(false);
   const [error, setError] = useState(false);
-  const [tel, setTel] = useState();
+  const [tel, setTel] = useState("");
+  const [name, setName] = useState("");
   const [code, setCode] = useState(Cookie.get("code")) || false;
   const { setUser, token, setToken, setImage } = ChatState();
 
@@ -44,21 +45,58 @@ function Login({}) {
     e.preventDefault();
     console.log(picture);
     console.log(tel, /^((\+||00)33|0)[1-9](\d{2}){4}$/g.test(tel));
-    if (!/^[a-zA-Z|| ]+$/.test(e.target.name.value))
-      setError("Name Format Incorrect !");
+    if (!/^[a-zA-Z|| ]+$/.test(name)) setError("Name Format Incorrect !");
     else if (!tel.match(/^\+(?:[0-9] ?){6,14}[0-9]$/))
       setError("Telephone format is incorrect !");
     else {
-      const formData = new FormData();
-      if (picURL) formData.append("picture", picture, picture.name);
-      formData.append("name", e.target.name.value);
-      formData.append("phone", tel);
-      axios.post("/login", formData).then(({ data }) => {
-        setCode(data.code);
-        setToken(data.token);
-        Cookie.set("code", data.code, { expires: 1 });
-        Cookie.set("token", data.token, { expires: 1 });
-      });
+      console.log(picture);
+      if (
+        (picture && picture.type === "image/jpeg") ||
+        (picture && picture.type === "image/png") ||
+        (picture && picture.type === "image/jpg")
+      ) {
+        const pic = new FormData();
+        pic.append("file", picture);
+        pic.append("upload_preset", "whats-mern");
+        pic.append("cloud_name", "daotio9px");
+        fetch("https://api.cloudinary.com/v1_1/daotio9px/image/upload", {
+          method: "post",
+          body: pic,
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            console.log(data);
+            axios
+              .post("/login", {
+                name: name,
+                phone: tel,
+                picture: data.url.toString(),
+              })
+              .then(({ data }) => {
+                setCode(data.code);
+                setToken(data.token);
+                Cookie.set("code", data.code, { expires: 1 });
+                Cookie.set("token", data.token, { expires: 1 });
+              });
+          })
+          .catch((err) => {
+            console.log(err);
+          });
+      } else if (!picture) {
+        axios
+          .post("/login", {
+            name: name,
+            phone: tel,
+          })
+          .then(({ data }) => {
+            setCode(data.code);
+            setToken(data.token);
+            Cookie.set("code", data.code, { expires: 1 });
+            Cookie.set("token", data.token, { expires: 1 });
+          });
+      }
+
+      console.log(e);
     }
   };
   const handleCodeSubmit = (e) => {
@@ -79,16 +117,12 @@ function Login({}) {
         setError(false);
         setCode(false);
         Cookie.remove("code");
-        Cookie.set("token", data.token, { expires: 1 / 24 });
-        console.log(data, "datauser");
+        Cookie.set("token", data.token, { expires: 1 });
         setToken(data.token);
-        const image =
-          data.image !== "picture"
-            ? "data:image/png;base64," +
-              Buffer.from(data.image).toString("base64")
-            : "picture";
+        const image = data.picture;
+
+        console.log(data, image);
         sessionStorage.setItem("image", image);
-        console.log(image);
         setImage(image);
         setUser(data.user);
         localStorage.setItem("user", JSON.stringify(data.user));
@@ -167,6 +201,8 @@ function Login({}) {
               <input
                 type="text"
                 name="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
                 onFocus={(e) => setError(false)}
                 placeholder="Enter Your Name"
               />

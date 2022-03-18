@@ -8,6 +8,7 @@ import { SearchOutlined } from "@material-ui/icons";
 import SidebarChat from "./SidebarChat";
 import { ChatState } from "./context/CharProvider";
 import axios from "./axios";
+import { Buffer } from "buffer";
 
 function Sidebar() {
   const [input, setInput] = useState("");
@@ -26,6 +27,7 @@ function Sidebar() {
     setRemoteId,
     friendList,
     setFriendList,
+    setSelectedPic,
   } = ChatState();
   const searchChange = (e) => {
     setInput(e.target.value);
@@ -70,7 +72,7 @@ function Sidebar() {
   return (
     <div className="sidebar">
       <div className="sidebar__header">
-        <Avatar src={image} />
+        <Avatar src={user.picture} />
         <div className="sidebar__headerRight">
           <IconButton>
             <DonutLargeIcon />
@@ -131,7 +133,7 @@ function Sidebar() {
         {friendList.map((elem, i) =>
           elem.users.map((ey, iy) => {
             if (ey._id !== user._id) {
-              return <SidebarChat key={i} chat={elem} user={ey} />;
+              return <SidebarChat key={i} chat={elem} contact={ey} />;
             }
           })
         )}

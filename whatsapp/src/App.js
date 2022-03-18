@@ -30,11 +30,7 @@ function App() {
   //     // channel.unsubscribe();
   //   };
   // }, []);
-  useEffect(() => {}, []);
-  useEffect(() => {
-    console.log(user);
-    return () => {};
-  }, [user]);
+
   return (
     <div className="app">
       {user ? (

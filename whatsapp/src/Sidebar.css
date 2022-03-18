@@ -48,3 +48,7 @@
   background-color: white;
   overflow: scroll;
 }
+.selected-chat {
+  background-color: #3ed157;
+  color: white;
+}

@@ -16,22 +16,27 @@ function Chat() {
   const [messages, setMessages] = useState([]);
   const [inRoom, setInRoom] = useState([]);
   const [displayNotifications, setDisplayNotifications] = useState(false);
-  const [prevSelectedId, setPrevSelectedId] = useState("");
+  const [limit, setLimit] = useState(1);
+  const [scrollBoolean, setScrollBoolean] = useState(false);
 
-  const [test, setTest] = useState(false);
-
+  const chatBody = useRef(null);
   const socketRef = useRef(null);
+  const chatMessage = useRef(null);
 
   const {
     user,
     selectedChat,
     search,
-    chat,
     notifications,
     setNotifications,
     remoteId,
     setRemoteId,
     setFriendList,
+    selectedPic,
+    friendList,
+    setSelectedPic,
+    selectedUser,
+    setSelectedUser,
   } = ChatState();
 
   useEffect(() => {
@@ -45,7 +50,18 @@ function Chat() {
   }, []);
 
   useEffect(() => {
+    console.log(chatBody.current.offsetTop, chatBody.current.scrollTop);
+    !scrollBoolean &&
+      chatBody.current &&
+      chatMessage.current &&
+      chatBody.current.scroll(0, chatMessage.current.offsetTop);
+    return () => {};
+  }, [messages]);
+
+  useEffect(() => {
+    console.log(friendList);
     socket.on("message received", (newMessage) => {
+      console.log(newMessage);
       if (
         selectedChat._id &&
         selectedChat.users.find((e) => {
@@ -59,24 +75,43 @@ function Chat() {
       }
       setFriendList((prev) => {
         const latestMessage = [...prev];
-        latestMessage[
-          prev.map((e) => e._id).indexOf(newMessage._id)
-        ].lastMessage = newMessage.message;
-        latestMessage.sort((x, y) => {
-          console.log(x);
-          return x._id ===
-            latestMessage[prev.map((e) => e._id).indexOf(newMessage._id)]._id
-            ? -1
-            : y ===
+        if (friendList.find((e) => e._id === newMessage._id)) {
+          latestMessage[
+            prev.map((e) => e._id).indexOf(newMessage._id)
+          ].lastMessage = newMessage.message;
+          latestMessage.sort((x, y) => {
+            console.log(x);
+            return x._id ===
               latestMessage[prev.map((e) => e._id).indexOf(newMessage._id)]._id
-            ? 1
-            : 0;
-        });
-        console.log(
-          latestMessage[prev.map((e) => e._id).indexOf(newMessage._id)]._id,
-          newMessage._id
-        );
-        return latestMessage;
+              ? -1
+              : y ===
+                latestMessage[prev.map((e) => e._id).indexOf(newMessage._id)]
+                  ._id
+              ? 1
+              : 0;
+          });
+          console.log(
+            latestMessage[prev.map((e) => e._id).indexOf(newMessage._id)]._id,
+            newMessage._id
+          );
+          return latestMessage;
+        } else {
+          console.log(newMessage);
+          return [
+            {
+              _id: newMessage._id,
+              lastMessage: newMessage.message,
+              users: [
+                {
+                  _id: newMessage.sender,
+                  name: newMessage.senderName,
+                  picture: newMessage.picture,
+                },
+              ],
+            },
+            ...latestMessage,
+          ];
+        }
       });
     });
     socket.on("inRoom", (id) => {
@@ -112,6 +147,11 @@ function Chat() {
 
   useEffect(() => {
     if (selectedChat && selectedChat._id) {
+      setSelectedPic(
+        selectedChat.users.find((e) => e._id !== user._id).picture
+      );
+
+      setSelectedUser(selectedChat.users.find((e) => e._id !== user._id));
       setMessages([]);
       if (remoteId) {
         socket.emit("outRoom", {
@@ -120,7 +160,7 @@ function Chat() {
         });
       }
       axios
-        .get(`/messages/sync?chatId=${selectedChat._id}`)
+        .get(`/messages/sync?chatId=${selectedChat._id}&limit=${limit}`)
         .then(({ data }) => {
           setMessages(data);
           socket.emit("inRoom", {
@@ -134,66 +174,100 @@ function Chat() {
         });
     }
     return;
-  }, [search]);
-  useEffect(() => {
-    console.log(inRoom);
-  }, [test]);
+  }, [search, limit]);
   const sendMessage = async (e) => {
     e.preventDefault();
-    var date = new Date();
-    date = date.toString();
-    try {
-      const { data } = await axios.post("messages/new", {
-        message: input,
-        sender: user._id,
-        _id: selectedChat._id,
-        userName: user.name,
-      });
-      socket.emit("newMessage", {
-        message: input,
-        sender: user._id,
-        remoteId: selectedChat.users.find((e) => e._id !== user._id)._id,
-        _id: selectedChat._id,
-      });
-
-      setMessages([...messages, data]);
-      setFriendList((prev) => {
-        const latestMessage = [...prev];
-        latestMessage[
-          prev.map((e) => e._id).indexOf(selectedChat._id)
-        ].lastMessage = data.message;
-        latestMessage.sort((x, y) => {
-          console.log(x);
-          return x._id ===
-            latestMessage[prev.map((e) => e._id).indexOf(selectedChat._id)]._id
-            ? -1
-            : y ===
-              latestMessage[prev.map((e) => e._id).indexOf(selectedChat._id)]
-                ._id
-            ? 1
-            : 0;
+    console.log(e.target.value);
+    if (input) {
+      var date = new Date();
+      date = date.toString();
+      try {
+        const { data } = await axios.post("messages/new", {
+          message: input,
+          sender: user._id,
+          _id: selectedChat._id,
+          userName: user.name,
         });
-        console.log(
-          latestMessage[prev.map((e) => e._id).indexOf(selectedChat._id)]._id,
-          selectedChat._id
-        );
-        return latestMessage;
-      });
-    } catch (err) {
-      console.log(err);
+        console.log("emit1");
+        socket.emit("newMessage", {
+          message: input,
+          sender: user._id,
+          senderName: user.name,
+          senderPicture: user.picture,
+          remoteId: selectedChat.users.find((e) => e._id !== user._id)._id,
+          _id: selectedChat._id,
+        });
+        console.log("emit2");
+        setMessages([...messages, data]);
+        setFriendList((prev) => {
+          const latestMessage = [...prev];
+          if (friendList.find((e) => e._id === selectedChat._id)) {
+            latestMessage[
+              prev.map((e) => e._id).indexOf(selectedChat._id)
+            ].lastMessage = data.message;
+            latestMessage.sort((x, y) => {
+              console.log(x);
+              return x._id ===
+                latestMessage[prev.map((e) => e._id).indexOf(selectedChat._id)]
+                  ._id
+                ? -1
+                : y ===
+                  latestMessage[
+                    prev.map((e) => e._id).indexOf(selectedChat._id)
+                  ]._id
+                ? 1
+                : 0;
+            });
+            console.log(
+              latestMessage[prev.map((e) => e._id).indexOf(selectedChat._id)]
+                ._id,
+              selectedChat._id
+            );
+            return latestMessage;
+          } else {
+            return [
+              {
+                _id: selectedChat._id,
+                lastMessage: data.message,
+                users: [
+                  {
+                    _id: selectedChat.users.find((e) => e._id !== user._id)._id,
+                    name: selectedChat.users.find((e) => e._id !== user._id)
+                      .name,
+                    picture: selectedChat.users.find((e) => e._id !== user._id)
+                      .picture,
+                  },
+                ],
+              },
+              ...latestMessage,
+            ];
+          }
+        });
+      } catch (err) {
+        console.log(err);
+      }
+      setInput("");
     }
-    setInput("");
   };
   const notificationsHandler = (i) => {
     setNotifications(notifications.splice(i, 1));
   };
-
+  useEffect(() => {
+    console.log(limit);
+  }, [limit]);
+  const messagesScrollHandler = (e) => {
+    setScrollBoolean(true);
+    console.log(e.target.scrollTop, e.target.height());
+    if (e.target.scrollTop - e.target.scrollHeight < 200) {
+      if (e.target.scrollTop <= 0) setLimit((e) => e + 1);
+    }
+  };
   return (
     <div className="chat">
       <div className="chat__header">
-        <Avatar />
+        <Avatar src={selectedPic ? selectedPic : null} />
         <div className="chat__headerInfo">
-          <h3>Room name</h3>
+          <h3>{selectedUser && selectedUser.name}</h3>
           {selectedChat._id &&
             inRoom.find(
               (e) =>
@@ -203,8 +277,6 @@ function Chat() {
               (e) =>
                 e.id === selectedChat.users.find((e) => e._id !== user._id)._id
             ).status && <strong style={{ color: "green" }}>In Room</strong>}
-
-          <p>Last seen at ...</p>
         </div>
         <div className="chat__headerRight">
           <IconButton>
@@ -261,13 +333,19 @@ function Chat() {
           </IconButton>
         </div>
       </div>
-      <div className="chat__body">
+      <div
+        className="chat__body"
+        ref={chatBody}
+        onScroll={messagesScrollHandler}
+      >
+        {scrollBoolean && <p style={{ position: "fixed" }}>&#11015;</p>}
         {messages.map((message, i) => (
           <p
             key={i}
             className={`chat__message ${
               message.sender === user._id && "chat__receiver"
             }`}
+            ref={i === messages.length - 1 ? chatMessage : null}
           >
             <span className="chat__name">{message.name}</span>
             {message.message}

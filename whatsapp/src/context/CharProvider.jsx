@@ -21,6 +21,8 @@ const ChatProvider = ({ children }) => {
   const [search, setSearch] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [remoteId, setRemoteId] = useState("");
+  const [selectedPic, setSelectedPic] = useState("");
+  const [selectedUser, setSelectedUser] = useState();
 
   const [friendList, setFriendList] = useState([]);
 
@@ -43,6 +45,10 @@ const ChatProvider = ({ children }) => {
         setRemoteId,
         friendList,
         setFriendList,
+        selectedPic,
+        setSelectedPic,
+        selectedUser,
+        setSelectedUser,
       }}
     >
       {children}
