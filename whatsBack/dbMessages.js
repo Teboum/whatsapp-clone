@@ -10,6 +10,7 @@ const whatssappSchema = mongoose.Schema(
             {
               message: String,
               sender: String,
+              vocal: Boolean,
             },
             { timestamps: true }
           ),

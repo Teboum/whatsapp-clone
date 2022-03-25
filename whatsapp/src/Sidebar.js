@@ -52,6 +52,13 @@ function Sidebar() {
       .then(({ data }) => {
         console.log(data);
         setFriendList(data.chats);
+      })
+      .catch((err) => {
+        console.log(err);
+        if (err.message === "invalid Token") {
+          setUser(false);
+          localStorage.setItem("user", false);
+        }
       });
 
     return () => {};

@@ -4,9 +4,15 @@ import { Avatar, IconButton } from "@material-ui/core";
 import { SearchOutlined, AttachFile, MoreVert } from "@material-ui/icons";
 import InsertEmoticonIcon from "@material-ui/icons/InsertEmoticon";
 import MicIcon from "@material-ui/icons/Mic";
+import SendIcon from "@material-ui/icons/Send";
 import axios from "./axios";
 import { ChatState } from "./context/CharProvider";
 import io from "socket.io-client";
+import { useReactMediaRecorder } from "react-media-recorder";
+import CancelIcon from "@material-ui/icons/Cancel";
+import { Buffer } from "buffer";
+import ReactAudioPlayer from "react-audio-player";
+import Audio from "./Audio";
 
 const ENDPOINT = "http://localhost:9000";
 var socket;
@@ -16,9 +22,15 @@ function Chat() {
   const [messages, setMessages] = useState([]);
   const [inRoom, setInRoom] = useState([]);
   const [displayNotifications, setDisplayNotifications] = useState(false);
-  const [limit, setLimit] = useState(1);
-  const [scrollBoolean, setScrollBoolean] = useState(false);
+  const [limit, setLimit] = useState(15);
+  const [media, setMedia] = useState();
+  const [scrollBoolean, setScrollBoolean] = useState(true);
+  const { status, startRecording, stopRecording, mediaBlobUrl } =
+    useReactMediaRecorder({
+      audio: true,
+    });
 
+  const step = 5;
   const chatBody = useRef(null);
   const socketRef = useRef(null);
   const chatMessage = useRef(null);
@@ -26,7 +38,9 @@ function Chat() {
   const {
     user,
     selectedChat,
+    setSelectedChat,
     search,
+    setSearch,
     notifications,
     setNotifications,
     remoteId,
@@ -38,6 +52,26 @@ function Chat() {
     selectedUser,
     setSelectedUser,
   } = ChatState();
+
+  useEffect(() => {
+    mediaBlobUrl &&
+      fetch(mediaBlobUrl)
+        .then((r) => {
+          console.log(r);
+          return r.blob();
+        })
+        .then(
+          (file) =>
+            new File(
+              [file],
+              selectedUser._id + "-" + user._id + "-" + Date.now(),
+              {
+                type: "audio/wav",
+              }
+            )
+        )
+        .then((file) => setMedia(file));
+  }, [mediaBlobUrl]);
 
   useEffect(() => {
     if (socketRef.current == null) {
@@ -59,8 +93,8 @@ function Chat() {
   }, [messages]);
 
   useEffect(() => {
-    console.log(friendList);
     socket.on("message received", (newMessage) => {
+      setLimit((e) => e++);
       console.log(newMessage);
       if (
         selectedChat._id &&
@@ -71,7 +105,24 @@ function Chat() {
       ) {
         setMessages([...messages, newMessage]);
       } else {
-        setNotifications([...notifications, newMessage]);
+        setNotifications((prev) => {
+          if (prev.find((e) => e._id === newMessage._id)) {
+            prev[prev.map((e) => e._id).indexOf(newMessage._id)].message =
+              newMessage.message;
+            prev.sort((x, y) => {
+              console.log(x);
+              return x._id ===
+                prev[prev.map((e) => e._id).indexOf(newMessage._id)]._id
+                ? -1
+                : y === prev[prev.map((e) => e._id).indexOf(newMessage._id)]._id
+                ? 1
+                : 0;
+            });
+            return prev;
+          } else {
+            setNotifications([newMessage, ...notifications]);
+          }
+        });
       }
       setFriendList((prev) => {
         const latestMessage = [...prev];
@@ -146,6 +197,8 @@ function Chat() {
   });
 
   useEffect(() => {
+    setLimit(15);
+    setScrollBoolean(false);
     if (selectedChat && selectedChat._id) {
       setSelectedPic(
         selectedChat.users.find((e) => e._id !== user._id).picture
@@ -160,9 +213,10 @@ function Chat() {
         });
       }
       axios
-        .get(`/messages/sync?chatId=${selectedChat._id}&limit=${limit}`)
+        .get(`/messages/sync?chatId=${selectedChat._id}&limit=${0}&step=${10}`)
         .then(({ data }) => {
           setMessages(data);
+          console.log(data);
           socket.emit("inRoom", {
             id: user._id,
             remoteId: selectedChat.users.find((e) => {
@@ -174,23 +228,30 @@ function Chat() {
         });
     }
     return;
-  }, [search, limit]);
+  }, [search]);
+
   const sendMessage = async (e) => {
     e.preventDefault();
-    console.log(e.target.value);
-    if (input) {
+    console.log(media);
+    if (input || media) {
+      var formData = new FormData();
+      media
+        ? formData.append("message", media, media.name)
+        : formData.append("message", input);
+
+      formData.append("sender", user._id);
+      formData.append("_id", selectedChat._id);
+      formData.append("userName", user.name);
+
       var date = new Date();
       date = date.toString();
       try {
-        const { data } = await axios.post("messages/new", {
-          message: input,
-          sender: user._id,
-          _id: selectedChat._id,
-          userName: user.name,
-        });
+        const { data } = await axios.post("messages/new", formData);
+
         console.log("emit1");
         socket.emit("newMessage", {
-          message: input,
+          message: media ? data.message : input,
+          vocal: media ? true : false,
           sender: user._id,
           senderName: user.name,
           senderPicture: user.picture,
@@ -198,6 +259,8 @@ function Chat() {
           _id: selectedChat._id,
         });
         console.log("emit2");
+        setMedia(null);
+        setLimit((e) => e++);
         setMessages([...messages, data]);
         setFriendList((prev) => {
           const latestMessage = [...prev];
@@ -249,17 +312,43 @@ function Chat() {
       setInput("");
     }
   };
-  const notificationsHandler = (i) => {
-    setNotifications(notifications.splice(i, 1));
+
+  const notificationsHandler = (e, i) => {
+    setNotifications((prev) => (prev.length === 1 ? [] : prev.splice(i, 1)));
+    setSelectedChat({
+      _id: e._id,
+      lastMessage: e.message,
+      users: [{ _id: e.sender, name: e.senderName, picture: e.picture }],
+    });
+    setSearch((e) => !e);
   };
-  useEffect(() => {
-    console.log(limit);
-  }, [limit]);
+
   const messagesScrollHandler = (e) => {
-    setScrollBoolean(true);
-    console.log(e.target.scrollTop, e.target.height());
-    if (e.target.scrollTop - e.target.scrollHeight < 200) {
-      if (e.target.scrollTop <= 0) setLimit((e) => e + 1);
+    if (
+      e.target.scrollHeight - e.target.scrollTop - e.target.clientHeight <=
+      100
+    )
+      setScrollBoolean(false);
+    else setScrollBoolean(true);
+    if (e.target.scrollTop <= 0) {
+      axios
+        .get(
+          `/messages/sync?chatId=${selectedChat._id}&limit=${limit}&step=${step}`
+        )
+        .then(({ data }) => {
+          setScrollBoolean(true);
+          setMessages((prev) => [...data, ...prev]);
+          console.log(data);
+          socket.emit("inRoom", {
+            id: user._id,
+            remoteId: selectedChat.users.find((e) => {
+              return e._id !== user._id;
+            })._id,
+          });
+
+          setRemoteId(selectedChat.users.find((e) => e._id !== user._id)._id);
+        });
+      setLimit((e) => e + 5);
     }
   };
   return (
@@ -286,88 +375,154 @@ function Chat() {
             <AttachFile />
           </IconButton>
           <IconButton
+            title="New Message"
             style={{ position: "relative" }}
             onClick={() =>
               notifications.length > 0 &&
               setDisplayNotifications(!displayNotifications)
             }
           >
-            {!displayNotifications && <span>{notifications.length}</span>}
             <MoreVert />
 
-            {displayNotifications && (
-              <ul
-                id="ntifications"
-                style={{
-                  position: "absolute",
-                  display: "block",
-                  top: "60%",
-                  right: "10%",
-                  backgroundColor: "white",
-                  display: "flex",
-                  flexDirection: "column",
-
-                  justifyContent: "center",
-                  alignItems: "space-between",
-                }}
+            {!displayNotifications && (
+              <span
+                style={{ marginLeft: "2px" }}
+                className={
+                  notifications.length > 0 ? "notifications-number" : null
+                }
               >
-                {notifications.map((e, i) => {
-                  console.log(notifications);
-                  return (
-                    <li
-                      id="notification"
+                {notifications.length}
+              </span>
+            )}
+
+            {displayNotifications && (
+              <ul id="notifications">
+                {notifications.map((e, i) => (
+                  <li
+                    key={i}
+                    style={{
+                      borderBottom: "1px solid black",
+                      listStyleType: "none",
+                    }}
+                    className="notification"
+                    onClick={() => notificationsHandler(e, i)}
+                  >
+                    <span
                       style={{
-                        borderBottom: "1px solid black",
-                        listStyleType: "none",
+                        paddingRight: "6px",
+                        borderRight: "1px solid black",
                       }}
-                      key={i}
-                      onClick={() => notificationsHandler(i)}
                     >
-                      <h4>{e.name}</h4>
-                      <p>{e.message}</p>
-                    </li>
-                  );
-                })}
+                      {e.senderName.charAt(0).toUpperCase() +
+                        e.senderName.slice(1)}
+                    </span>
+                    <span
+                      style={{
+                        paddingLeft: "4px",
+                      }}
+                    >
+                      {e.message}
+                    </span>
+                  </li>
+                ))}
               </ul>
             )}
           </IconButton>
         </div>
       </div>
-      <div
-        className="chat__body"
-        ref={chatBody}
-        onScroll={messagesScrollHandler}
-      >
-        {scrollBoolean && <p style={{ position: "fixed" }}>&#11015;</p>}
-        {messages.map((message, i) => (
-          <p
-            key={i}
-            className={`chat__message ${
-              message.sender === user._id && "chat__receiver"
-            }`}
-            ref={i === messages.length - 1 ? chatMessage : null}
-          >
-            <span className="chat__name">{message.name}</span>
-            {message.message}
-            <span className="chat__timestamp">{message.timestamp}</span>
-          </p>
-        ))}
-      </div>
-      <div className="chat__footer">
-        <InsertEmoticonIcon />
-        <form>
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Type a message"
-          />
-          <button onClick={sendMessage} type="submit">
-            send a message
-          </button>
-        </form>
-        <MicIcon />
-      </div>
+      {
+        <div
+          className="chat__body"
+          ref={chatBody}
+          // onScroll={messagesScrollHandler}
+        >
+          {scrollBoolean && (
+            <img
+              title="Scroll To Bottom"
+              className="scroll__arrow"
+              src="arrow.png"
+              onClick={(e) =>
+                chatBody.current.scroll(0, chatMessage.current.offsetTop)
+              }
+            />
+          )}
+          {messages.map((message, i) => {
+            if (message.message && message.vocal) {
+              console.log(message);
+              return <Audio message={message} key={message._id} />;
+            } else {
+              console.log(message);
+              return (
+                <p
+                  key={i}
+                  className={`chat__message ${
+                    message.sender === user._id && "chat__receiver"
+                  }`}
+                  ref={i === messages.length - 1 ? chatMessage : null}
+                >
+                  <span className="chat__name">{message.name}</span>
+                  {message.message}
+                  <span className="chat__timestamp">{message.createdAt}</span>
+                </p>
+              );
+            }
+          })}
+        </div>
+      }
+      {selectedChat && (
+        <div className="chat__footer">
+          <InsertEmoticonIcon />
+          <form>
+            {media ? (
+              <audio src={mediaBlobUrl} controls autoPlay />
+            ) : (
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Type a message"
+              />
+            )}
+            <button onClick={sendMessage} type="submit">
+              send a message
+            </button>
+          </form>
+          {!media ? (
+            <>
+              <p style={{ position: "absolute", right: "10%", bottom: "0%" }}>
+                {status}
+              </p>
+              <SendIcon
+                style={{ cursor: "pointer" }}
+                title={"Send"}
+                onClick={sendMessage}
+              />
+              <MicIcon
+                tabIndex="0"
+                onMouseDown={startRecording}
+                onMouseUp={stopRecording}
+              />
+            </>
+          ) : (
+            <>
+              <CancelIcon
+                style={{
+                  color: "red",
+                  backgroundColor: "lightgrey",
+                  cursor: "pointer",
+                }}
+                title={"cancel"}
+                onClick={(e) => setMedia(null)}
+              />{" "}
+              <SendIcon
+                style={{ cursor: "pointer" }}
+                title={"Send"}
+                onClick={sendMessage}
+              />
+            </>
+          )}{" "}
+        </div>
+      )}
     </div>
   );
 }

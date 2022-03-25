@@ -20,8 +20,27 @@
 .chat__headerInfo > p {
   color: gray;
 }
-
+#notifications {
+  width: 100px;
+  list-style-type: none;
+  position: absolute;
+  top: 100%;
+  background-color: #3ed157;
+  z-index: 99;
+  padding-inline-start: 0;
+}
+.notification {
+  text-align: center;
+  font-size: 22px;
+  padding: 3px;
+}
+.notification h4,
+.notification p {
+  font-size: 18px;
+}
 .chat__body {
+  display: flex;
+  flex-direction: column;
   flex: 1;
   background-image: url("https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png");
   background-repeat: repeat;
@@ -30,6 +49,14 @@
   overflow: scroll;
   position: relative;
 }
+
+.scroll__arrow {
+  position: fixed;
+  align-self: center;
+  width: 20px;
+  cursor: pointer;
+}
+
 .chat__message {
   position: relative;
   font-size: 16px;
@@ -38,6 +65,13 @@
   border-radius: 10px;
   background-color: #ffffff;
   margin-bottom: 30px;
+}
+.chat__audio {
+  position: relative;
+  font-size: 16px;
+  border-radius: 10px;
+  margin-bottom: 30px;
+  min-height: 20px;
 }
 .chat__receiver {
   margin-left: auto;
@@ -59,6 +93,7 @@
   align-items: center;
   height: 62px;
   border-top: 1px solid lightgray;
+  position: relative;
 }
 .chat__footer > form {
   flex: 1;
@@ -76,4 +111,21 @@
 .chat__footer > .MuiSvgIcon-root {
   padding: 10px;
   color: gray;
+}
+
+.notifications-number {
+  animation: example 1s linear infinite;
+  font-size: 16px;
+}
+
+@keyframes example {
+  0% {
+    color: gray;
+  }
+  50% {
+    color: orange;
+  }
+  100% {
+    color: red;
+  }
 }

@@ -2,16 +2,14 @@
 import express from "express";
 import mongoose from "mongoose";
 import Messages from "./dbMessages.js";
-import Pusher from "pusher";
 import cors from "cors";
-import multer from "multer";
-import { check, validationResult } from "express-validator";
+import { check } from "express-validator";
 import USER from "./dbUser.js";
 import env from "dotenv";
 import asyncHandler from "express-async-handler";
 import { createServer } from "http";
 import fs from "fs-extra";
-
+import multer from "multer";
 env.config();
 //app config
 const app = express();
@@ -22,6 +20,7 @@ import {
   isCode,
   isLogin,
 } from "./utils.js";
+
 const httpServer = createServer(app);
 
 const port = process.env.PORT || 9000;
@@ -86,40 +85,67 @@ mongoose.connect(dbURL, {
 //api routes
 app.get("/", (req, res) => res.status(200).send("hello world"));
 
-app.get("/messages/sync", (req, res) => {
-  console.log(req.query.limit * 10);
+app.get("/messages/sync", async (req, res) => {
+  console.log(req.query.limit);
   Messages.findById(req.query.chatId)
     .select("_id messages")
-    .slice("messages", 10 * req.query.limit)
-    .exec(function (err, data) {
+    // .slice("messages", [+req.query.limit, +req.query.step])
+    .sort({ messages: 1 })
+    .exec(async function (err, data) {
       if (err) res.status(500).json({ error: err.message });
-      res.status(200).send(data.messages);
+      else res.status(200).send(data.messages);
     });
 });
-app.post("/messages/new", async (req, res) => {
-  const dbMessage = { ...req.body };
-  delete dbMessage.userId;
-  Messages.updateOne(
-    { _id: req.body._id },
-    {
-      $push: {
-        messages: { message: req.body.message, sender: req.body.sender },
+
+app.post(
+  "/messages/new",
+  multer({
+    storage: multer.diskStorage({
+      destination: (req, file, cb) => {
+        cb(null, "vocals"); /// images--->folder destination
       },
-      lastMessage: req.body.message,
-    },
-    { new: true },
-    (err, data) => {
-      if (err) {
-        console.log(err);
-        res.status(500).send(err);
-      } else {
-        res
-          .status(201)
-          .send({ message: req.body.message, sender: req.body.sender });
+      filename: (req, file, cb) => {
+        console.log(file.originalname);
+        cb(null, file.originalname + ".wav");
+        //file name with extention And to store it in db
+      },
+    }),
+  }).single("message"),
+  (req, res) => {
+    console.log(req.file);
+    if (req.file) req.body.message = req.file.filename;
+    const dbMessage = { ...req.body };
+    delete dbMessage.userId;
+    Messages.updateOne(
+      { _id: req.body._id },
+      {
+        $push: {
+          messages: {
+            message: req.body.message,
+            sender: req.body.sender,
+            vocal: req.file ? true : false,
+          },
+        },
+        lastMessage: req.file ? "Vocal Message" : req.body.message,
+      },
+      { new: true },
+      (err, data) => {
+        if (err) {
+          console.log(err);
+          res.status(500).send(err);
+        } else {
+          console.log("match");
+          res.status(201).send({
+            message: req.body.message,
+            sender: req.body.sender,
+            vocal: req.file ? true : false,
+          });
+        }
       }
-    }
-  );
-});
+    );
+  }
+);
+
 app.post(
   "/login",
   check("name").custom((value, { req }) => {
@@ -221,6 +247,7 @@ app.get(
   asyncHandler(async (req, res) => {
     const regex = new RegExp(req.query.contactId);
     const regex2 = new RegExp(req.user._id);
+    console.log(req.query.contactId, "contactId", req.user._id);
     try {
       let chat = await Messages.findOne(
         {
@@ -277,11 +304,30 @@ app.get(
       });
   })
 );
+
+app.get("/getAudio", (req, res) => {
+  console.log(req.query);
+  res.set("content-type", "audio/wav");
+  res.set("accept-ranges", "bytes");
+  const rStream = fs.createReadStream("./vocals/" + req.query._id);
+
+  rStream.on("data", (chunkData) => {
+    res.write(chunkData);
+  });
+  rStream.on("end", () => {
+    res.end();
+  });
+  rStream.on("error", (err) => {
+    console.log(err);
+    res.end({ error: "file not found" });
+  });
+});
 //listen
 httpServer.listen(port, () => console.log(`Listening on port: ${port}`));
 
 //-------------Socket.IO-----------//
 import { Server } from "socket.io";
+import expressAsyncHandler from "express-async-handler";
 
 const io = new Server(httpServer, {
   pingTimeout: 600000,

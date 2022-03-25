@@ -1,16 +1,11 @@
 import React, { useEffect, useState } from "react";
 import "./App.css";
-import Sidebar from "./Sidebar";
-import Chat from "./Chat";
-import Pusher from "pusher-js";
-import axios from "./axios";
 import Login from "./Login";
 import Home from "./Home";
-import Cookies from "js-cookie";
 import { ChatState } from "./context/CharProvider";
 function App() {
   const [image, setImage] = useState(sessionStorage.getItem("image") || null);
-  const { user, setUser, setToken, token, setSelectedId } = ChatState();
+  const { user, setUser, setToken, token } = ChatState();
 
   // useEffect(() => {
   //   // var pusher = new Pusher("b19265744ce797e7dc48", {
