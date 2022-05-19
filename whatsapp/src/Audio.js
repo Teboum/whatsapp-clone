@@ -4,7 +4,6 @@ import { ChatState } from "./context/CharProvider";
 
 const Audio = ({ message }) => {
   const { user } = ChatState();
-  console.log(message);
   return (
     <audio
       className="chat__audio"

@@ -7,7 +7,6 @@ import { Buffer } from "buffer";
 function SidebarChat({ contact, chat }) {
   const { setSelectedChat, setSearch, selectedChat } = ChatState();
   const [pic, setPic] = useState(false);
-  console.log(chat);
   return (
     <div
       className={`sidebarChat ${

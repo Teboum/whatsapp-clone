@@ -35,21 +35,16 @@ function Login({}) {
     setPicURL(false);
     setPicture(e.target.files[0]);
     setPicURL(URL.createObjectURL(e.target.files[0]));
-    console.log(picture);
   };
   const emite = (e) => {
-    console.log(drag.current);
     drag.current.click();
   };
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log(picture);
-    console.log(tel, /^((\+||00)33|0)[1-9](\d{2}){4}$/g.test(tel));
     if (!/^[a-zA-Z|| ]+$/.test(name)) setError("Name Format Incorrect !");
     else if (!tel.match(/^\+(?:[0-9] ?){6,14}[0-9]$/))
       setError("Telephone format is incorrect !");
     else {
-      console.log(picture);
       if (
         (picture && picture.type === "image/jpeg") ||
         (picture && picture.type === "image/png") ||
@@ -65,7 +60,6 @@ function Login({}) {
         })
           .then((res) => res.json())
           .then((data) => {
-            console.log(data);
             axios
               .post("/login", {
                 name: name,
@@ -95,8 +89,6 @@ function Login({}) {
             Cookie.set("token", data.token, { expires: 1 });
           });
       }
-
-      console.log(e);
     }
   };
   const handleCodeSubmit = (e) => {
@@ -120,8 +112,6 @@ function Login({}) {
         Cookie.set("token", data.token, { expires: 1 });
         setToken(data.token);
         const image = data.picture;
-
-        console.log(data, image);
         sessionStorage.setItem("image", image);
         setImage(image);
         setUser(data.user);

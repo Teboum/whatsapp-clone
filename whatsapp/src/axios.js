@@ -5,7 +5,6 @@ const instance = axios.create({
 });
 
 instance.interceptors.response.use(null, function (error) {
-  console.log(error.response.data.error, "interceptors");
   throw new Error(error.response.data.error);
 });
 

@@ -50,7 +50,6 @@ function Sidebar() {
         headers: { Authorization: "Bearer " + token },
       })
       .then(({ data }) => {
-        console.log(data);
         setFriendList(data.chats);
       })
       .catch((err) => {

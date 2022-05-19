@@ -10,6 +10,7 @@ import asyncHandler from "express-async-handler";
 import { createServer } from "http";
 import fs from "fs-extra";
 import multer from "multer";
+import path from "path";
 env.config();
 //app config
 const app = express();
@@ -83,10 +84,8 @@ mongoose.connect(dbURL, {
 //????
 
 //api routes
-app.get("/", (req, res) => res.status(200).send("hello world"));
 
 app.get("/messages/sync", async (req, res) => {
-  console.log(req.query.limit);
   Messages.findById(req.query.chatId)
     .select("_id messages")
     // .slice("messages", [+req.query.limit, +req.query.step])
@@ -105,14 +104,12 @@ app.post(
         cb(null, "vocals"); /// images--->folder destination
       },
       filename: (req, file, cb) => {
-        console.log(file.originalname);
         cb(null, file.originalname + ".wav");
         //file name with extention And to store it in db
       },
     }),
   }).single("message"),
   (req, res) => {
-    console.log(req.file);
     if (req.file) req.body.message = req.file.filename;
     const dbMessage = { ...req.body };
     delete dbMessage.userId;
@@ -134,7 +131,6 @@ app.post(
           console.log(err);
           res.status(500).send(err);
         } else {
-          console.log("match");
           res.status(201).send({
             message: req.body.message,
             sender: req.body.sender,
@@ -191,7 +187,6 @@ app.post(
       req.user.picture === "picture" && delete req.user.picture;
       delete req.user.code;
       req.user.active = true;
-      console.log(req.user);
       USER.findOneAndUpdate(
         { phone: req.user.phone },
         { $set: req.user },
@@ -205,7 +200,6 @@ app.post(
           doc = doc.toObject();
           delete doc.__v;
           const token = getTokenLogin(doc);
-          console.log(token, "token");
           return res.status(200).json({ user: { ...doc }, token: token });
         }
       );
@@ -247,7 +241,6 @@ app.get(
   asyncHandler(async (req, res) => {
     const regex = new RegExp(req.query.contactId);
     const regex2 = new RegExp(req.user._id);
-    console.log(req.query.contactId, "contactId", req.user._id);
     try {
       let chat = await Messages.findOne(
         {
@@ -306,7 +299,6 @@ app.get(
 );
 
 app.get("/getAudio", (req, res) => {
-  console.log(req.query);
   res.set("content-type", "audio/wav");
   res.set("accept-ranges", "bytes");
   const rStream = fs.createReadStream("./vocals/" + req.query._id);
@@ -322,6 +314,18 @@ app.get("/getAudio", (req, res) => {
     res.end({ error: "file not found" });
   });
 });
+//-----deploy-----//
+
+const __dirname = path.resolve();
+console.log(__dirname);
+if (process.env.NODE_ENV === "production") {
+  app.use(express.static(path.join(__dirname, "/whatsapp/build")));
+  app.get("*", (req, res, next) => {
+    res.sendFile(path.resolve(__dirname, "whatsapp", "build", "index.html"));
+  });
+}
+//----deploy-----//
+
 //listen
 httpServer.listen(port, () => console.log(`Listening on port: ${port}`));
 

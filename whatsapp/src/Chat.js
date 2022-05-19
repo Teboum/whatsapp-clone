@@ -1,18 +1,18 @@
 import React, { useEffect, useRef, useState } from "react";
 import "./Chat.css";
 import { Avatar, IconButton } from "@material-ui/core";
-import { SearchOutlined, AttachFile, MoreVert } from "@material-ui/icons";
+import { SearchOutlined, MoreVert } from "@material-ui/icons";
 import InsertEmoticonIcon from "@material-ui/icons/InsertEmoticon";
 import MicIcon from "@material-ui/icons/Mic";
+import { BiLogOut } from "react-icons/bi";
 import SendIcon from "@material-ui/icons/Send";
 import axios from "./axios";
 import { ChatState } from "./context/CharProvider";
 import io from "socket.io-client";
 import { useReactMediaRecorder } from "react-media-recorder";
 import CancelIcon from "@material-ui/icons/Cancel";
-import { Buffer } from "buffer";
-import ReactAudioPlayer from "react-audio-player";
 import Audio from "./Audio";
+import Cookies from "js-cookie";
 
 const ENDPOINT = "http://localhost:9000";
 var socket;
@@ -37,6 +37,7 @@ function Chat() {
 
   const {
     user,
+    setUser,
     selectedChat,
     setSelectedChat,
     search,
@@ -57,7 +58,6 @@ function Chat() {
     mediaBlobUrl &&
       fetch(mediaBlobUrl)
         .then((r) => {
-          console.log(r);
           return r.blob();
         })
         .then(
@@ -84,7 +84,6 @@ function Chat() {
   }, []);
 
   useEffect(() => {
-    console.log(chatBody.current.offsetTop, chatBody.current.scrollTop);
     !scrollBoolean &&
       chatBody.current &&
       chatMessage.current &&
@@ -95,11 +94,9 @@ function Chat() {
   useEffect(() => {
     socket.on("message received", (newMessage) => {
       setLimit((e) => e++);
-      console.log(newMessage);
       if (
         selectedChat._id &&
         selectedChat.users.find((e) => {
-          console.log(e._id, newMessage);
           return e._id === newMessage.sender;
         })
       ) {
@@ -110,7 +107,6 @@ function Chat() {
             prev[prev.map((e) => e._id).indexOf(newMessage._id)].message =
               newMessage.message;
             prev.sort((x, y) => {
-              console.log(x);
               return x._id ===
                 prev[prev.map((e) => e._id).indexOf(newMessage._id)]._id
                 ? -1
@@ -131,7 +127,6 @@ function Chat() {
             prev.map((e) => e._id).indexOf(newMessage._id)
           ].lastMessage = newMessage.message;
           latestMessage.sort((x, y) => {
-            console.log(x);
             return x._id ===
               latestMessage[prev.map((e) => e._id).indexOf(newMessage._id)]._id
               ? -1
@@ -141,13 +136,8 @@ function Chat() {
               ? 1
               : 0;
           });
-          console.log(
-            latestMessage[prev.map((e) => e._id).indexOf(newMessage._id)]._id,
-            newMessage._id
-          );
           return latestMessage;
         } else {
-          console.log(newMessage);
           return [
             {
               _id: newMessage._id,
@@ -166,7 +156,6 @@ function Chat() {
       });
     });
     socket.on("inRoom", (id) => {
-      console.log(inRoom);
       if (inRoom.find((e) => e.id === id)) {
         setInRoom((prev) => {
           let state = [...prev];
@@ -181,7 +170,6 @@ function Chat() {
       }
     });
     socket.on("leave", (id) => {
-      console.log(inRoom, id);
       if (inRoom.find((e) => e.id === id && selectedChat._id)) {
         setInRoom((prev) => {
           let state = [...prev];
@@ -213,10 +201,9 @@ function Chat() {
         });
       }
       axios
-        .get(`/messages/sync?chatId=${selectedChat._id}&limit=${0}&step=${10}`)
+        .get(`/messages/sync?chatId=${selectedChat._id}`)
         .then(({ data }) => {
           setMessages(data);
-          console.log(data);
           socket.emit("inRoom", {
             id: user._id,
             remoteId: selectedChat.users.find((e) => {
@@ -232,7 +219,6 @@ function Chat() {
 
   const sendMessage = async (e) => {
     e.preventDefault();
-    console.log(media);
     if (input || media) {
       var formData = new FormData();
       media
@@ -247,8 +233,6 @@ function Chat() {
       date = date.toString();
       try {
         const { data } = await axios.post("messages/new", formData);
-
-        console.log("emit1");
         socket.emit("newMessage", {
           message: media ? data.message : input,
           vocal: media ? true : false,
@@ -258,7 +242,6 @@ function Chat() {
           remoteId: selectedChat.users.find((e) => e._id !== user._id)._id,
           _id: selectedChat._id,
         });
-        console.log("emit2");
         setMedia(null);
         setLimit((e) => e++);
         setMessages([...messages, data]);
@@ -269,7 +252,6 @@ function Chat() {
               prev.map((e) => e._id).indexOf(selectedChat._id)
             ].lastMessage = data.message;
             latestMessage.sort((x, y) => {
-              console.log(x);
               return x._id ===
                 latestMessage[prev.map((e) => e._id).indexOf(selectedChat._id)]
                   ._id
@@ -281,11 +263,6 @@ function Chat() {
                 ? 1
                 : 0;
             });
-            console.log(
-              latestMessage[prev.map((e) => e._id).indexOf(selectedChat._id)]
-                ._id,
-              selectedChat._id
-            );
             return latestMessage;
           } else {
             return [
@@ -323,33 +300,40 @@ function Chat() {
     setSearch((e) => !e);
   };
 
-  const messagesScrollHandler = (e) => {
-    if (
-      e.target.scrollHeight - e.target.scrollTop - e.target.clientHeight <=
-      100
-    )
-      setScrollBoolean(false);
-    else setScrollBoolean(true);
-    if (e.target.scrollTop <= 0) {
-      axios
-        .get(
-          `/messages/sync?chatId=${selectedChat._id}&limit=${limit}&step=${step}`
-        )
-        .then(({ data }) => {
-          setScrollBoolean(true);
-          setMessages((prev) => [...data, ...prev]);
-          console.log(data);
-          socket.emit("inRoom", {
-            id: user._id,
-            remoteId: selectedChat.users.find((e) => {
-              return e._id !== user._id;
-            })._id,
-          });
+  // const messagesScrollHandler = (e) => {
+  //   if (
+  //     e.target.scrollHeight - e.target.scrollTop - e.target.clientHeight <=
+  //     100
+  //   )
+  //     setScrollBoolean(false);
+  //   else setScrollBoolean(true);
+  //   if (e.target.scrollTop <= 0) {
+  //     axios
+  //       .get(
+  //         `/messages/sync?chatId=${selectedChat._id}&limit=${limit}&step=${step}`
+  //       )
+  //       .then(({ data }) => {
+  //         setScrollBoolean(true);
+  //         setMessages((prev) => [...data, ...prev]);
+  //         console.log(data);
+  //         socket.emit("inRoom", {
+  //           id: user._id,
+  //           remoteId: selectedChat.users.find((e) => {
+  //             return e._id !== user._id;
+  //           })._id,
+  //         });
 
-          setRemoteId(selectedChat.users.find((e) => e._id !== user._id)._id);
-        });
-      setLimit((e) => e + 5);
-    }
+  //         setRemoteId(selectedChat.users.find((e) => e._id !== user._id)._id);
+  //       });
+  //     setLimit((e) => e + 5);
+  //   }
+  // };
+  const logout = () => {
+    setUser("");
+    localStorage.setItem("user", false);
+    Cookies.set("token", false);
+    sessionStorage.setItem("image", "");
+    sessionStorage.setItem("selectedChat", false);
   };
   return (
     <div className="chat">
@@ -368,11 +352,8 @@ function Chat() {
             ).status && <strong style={{ color: "green" }}>In Room</strong>}
         </div>
         <div className="chat__headerRight">
-          <IconButton>
-            <SearchOutlined />
-          </IconButton>
-          <IconButton>
-            <AttachFile />
+          <IconButton onClick={logout}>
+            <BiLogOut style={{ color: "red" }} title="Logout" />
           </IconButton>
           <IconButton
             title="New Message"
@@ -448,10 +429,8 @@ function Chat() {
           )}
           {messages.map((message, i) => {
             if (message.message && message.vocal) {
-              console.log(message);
               return <Audio message={message} key={message._id} />;
             } else {
-              console.log(message);
               return (
                 <p
                   key={i}
