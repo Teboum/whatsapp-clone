@@ -154,7 +154,6 @@ app.post(
     else return true;
   }),
   async (req, res, next) => {
-    console.log(req.body, "body");
     const user = req.body;
     var random = Math.floor(100000 + Math.random() * 900000);
     // const Client=client(

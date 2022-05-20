@@ -333,7 +333,7 @@ function Chat() {
     localStorage.setItem("user", false);
     Cookies.set("token", false);
     sessionStorage.setItem("image", "");
-    sessionStorage.setItem("selectedChat", false);
+    sessionStorage.setItem("selectedChat", "");
   };
   return (
     <div className="chat">
