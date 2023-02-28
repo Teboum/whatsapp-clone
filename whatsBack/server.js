@@ -1,16 +1,16 @@
 //importing
-import express from "express";
-import mongoose from "mongoose";
-import Messages from "./dbMessages.js";
-import cors from "cors";
-import { check } from "express-validator";
-import USER from "./dbUser.js";
-import env from "dotenv";
-import asyncHandler from "express-async-handler";
-import { createServer } from "http";
-import fs from "fs-extra";
-import multer from "multer";
-import path from "path";
+import express from 'express';
+import mongoose from 'mongoose';
+import Messages from './dbMessages.js';
+import cors from 'cors';
+import { check } from 'express-validator';
+import USER from './dbUser.js';
+import env from 'dotenv';
+import asyncHandler from 'express-async-handler';
+import { createServer } from 'http';
+import fs from 'fs-extra';
+import multer from 'multer';
+import path from 'path';
 env.config();
 //app config
 const app = express();
@@ -20,7 +20,7 @@ import {
   getTokenRegistration,
   isCode,
   isLogin,
-} from "./utils.js";
+} from './utils.js';
 
 const httpServer = createServer(app);
 
@@ -74,7 +74,7 @@ app.use(cors());
 
 //dbconfig
 const dbURL =
-  "mongodb://admin:fxuZEDagYerQjaj8@cluster0-shard-00-00.m50nl.mongodb.net:27017,cluster0-shard-00-01.m50nl.mongodb.net:27017,cluster0-shard-00-02.m50nl.mongodb.net:27017/WhatsDB?ssl=true&replicaSet=atlas-13e21j-shard-0&authSource=admin&retryWrites=true&w=majority";
+  'mongodb://admin:fxuZEDagYerQjaj8@cluster0-shard-00-00.m50nl.mongodb.net:27017,cluster0-shard-00-01.m50nl.mongodb.net:27017,cluster0-shard-00-02.m50nl.mongodb.net:27017/WhatsDB?ssl=true&replicaSet=atlas-13e21j-shard-0&authSource=admin&retryWrites=true&w=majority';
 mongoose.connect(dbURL, {
   useCreateIndex: true,
   useNewUrlParser: true,
@@ -85,9 +85,9 @@ mongoose.connect(dbURL, {
 
 //api routes
 
-app.get("/messages/sync", async (req, res) => {
+app.get('/messages/sync', async (req, res) => {
   Messages.findById(req.query.chatId)
-    .select("_id messages")
+    .select('_id messages')
     // .slice("messages", [+req.query.limit, +req.query.step])
     .sort({ messages: 1 })
     .exec(async function (err, data) {
@@ -97,18 +97,18 @@ app.get("/messages/sync", async (req, res) => {
 });
 
 app.post(
-  "/messages/new",
+  '/messages/new',
   multer({
     storage: multer.diskStorage({
       destination: (req, file, cb) => {
-        cb(null, "vocals"); /// images--->folder destination
+        cb(null, 'vocals'); /// images--->folder destination
       },
       filename: (req, file, cb) => {
-        cb(null, file.originalname + ".wav");
+        cb(null, file.originalname + '.wav');
         //file name with extention And to store it in db
       },
     }),
-  }).single("message"),
+  }).single('message'),
   (req, res) => {
     if (req.file) req.body.message = req.file.filename;
     const dbMessage = { ...req.body };
@@ -123,7 +123,7 @@ app.post(
             vocal: req.file ? true : false,
           },
         },
-        lastMessage: req.file ? "Vocal Message" : req.body.message,
+        lastMessage: req.file ? 'Vocal Message' : req.body.message,
       },
       { new: true },
       (err, data) => {
@@ -143,14 +143,14 @@ app.post(
 );
 
 app.post(
-  "/login",
-  check("name").custom((value, { req }) => {
-    if (!/^[a-zA-Z|| ]+$/.test(req.body.name)) throw "Name Format Incorrect !";
+  '/login',
+  check('name').custom((value, { req }) => {
+    if (!/^[a-zA-Z|| ]+$/.test(req.body.name)) throw 'Name Format Incorrect !';
     else return true;
   }),
-  check("phone").custom((value, { req }) => {
+  check('phone').custom((value, { req }) => {
     if (!tel.match(/^\+(?:[0-9] ?){6,14}[0-9]$/))
-      throw "Telephone format is incorrect !";
+      throw 'Telephone format is incorrect !';
     else return true;
   }),
   async (req, res, next) => {
@@ -172,18 +172,18 @@ app.post(
 );
 
 app.post(
-  "/login-code",
+  '/login-code',
   isCode,
-  check("code")
+  check('code')
     .not()
     .isEmpty()
     .isLength(6)
-    .withMessage("Code contient 6 chiffres au minimum")
+    .withMessage('Code contient 6 chiffres au minimum')
     .isInt()
-    .withMessage("Le code est composé de chiffres"),
+    .withMessage('Le code est composé de chiffres'),
   async (req, res, next) => {
     if (+req.body.code === req.user.code) {
-      req.user.picture === "picture" && delete req.user.picture;
+      req.user.picture === 'picture' && delete req.user.picture;
       delete req.user.code;
       req.user.active = true;
       USER.findOneAndUpdate(
@@ -203,18 +203,18 @@ app.post(
         }
       );
     } else {
-      res.status(403).json({ error: "Code Incorrect" });
+      res.status(403).json({ error: 'Code Incorrect' });
     }
   }
 );
 
-app.get("/search-friend", (req, res, next) => {
-  var regex = (req.query.value.charAt(0) === "+", "0")
+app.get('/search-friend', (req, res, next) => {
+  var regex = (req.query.value.charAt(0) === '+', '0')
     ? new RegExp(req.query.value.slice(1))
     : new RegExp(req.query.value);
   USER.find({
     $and: [
-      { phone: { $regex: regex, $options: "i" } },
+      { phone: { $regex: regex, $options: 'i' } },
       { _id: { $ne: req.query.userId } },
     ],
   })
@@ -235,7 +235,7 @@ app.get("/search-friend", (req, res, next) => {
 });
 
 app.get(
-  "/set-chat",
+  '/set-chat',
   isLogin,
   asyncHandler(async (req, res) => {
     const regex = new RegExp(req.query.contactId);
@@ -256,16 +256,16 @@ app.get(
         //   ],
         // },
       )
-        .select("-messages")
-        .populate("users", "-password");
+        .select('-messages')
+        .populate('users', '-password');
 
       if (!chat) {
         chat = await Messages.create({
           users: [req.query.contactId, req.user._id],
         });
         chat = await Messages.findById(chat._id)
-          .select("-messages")
-          .populate("users", "-password");
+          .select('-messages')
+          .populate('users', '-password');
 
         res.status(200).json(chat);
       } else {
@@ -279,14 +279,14 @@ app.get(
 );
 
 app.get(
-  "/friend-list",
+  '/friend-list',
   isLogin,
   asyncHandler(async (req, res, next) => {
     Messages.find({
       $and: [{ users: req.query._id }],
     })
-      .select("-messages")
-      .populate("users", "-password")
+      .select('-messages')
+      .populate('users', '-password')
       .sort({ updatedAt: -1 })
       .exec((err, messages) => {
         if (err) {
@@ -297,30 +297,30 @@ app.get(
   })
 );
 
-app.get("/getAudio", (req, res) => {
-  res.set("content-type", "audio/wav");
-  res.set("accept-ranges", "bytes");
-  const rStream = fs.createReadStream("./vocals/" + req.query._id);
+app.get('/getAudio', (req, res) => {
+  res.set('content-type', 'audio/wav');
+  res.set('accept-ranges', 'bytes');
+  const rStream = fs.createReadStream('./vocals/' + req.query._id);
 
-  rStream.on("data", (chunkData) => {
+  rStream.on('data', (chunkData) => {
     res.write(chunkData);
   });
-  rStream.on("end", () => {
+  rStream.on('end', () => {
     res.end();
   });
-  rStream.on("error", (err) => {
+  rStream.on('error', (err) => {
     console.log(err);
-    res.end({ error: "file not found" });
+    res.end({ error: 'file not found' });
   });
 });
 //-----deploy-----//
 
 const __dirname = path.resolve();
 console.log(__dirname);
-if (process.env.NODE_ENV === "production") {
-  app.use(express.static(path.join(__dirname, "/whatsapp/build")));
-  app.get("*", (req, res, next) => {
-    res.sendFile(path.resolve(__dirname, "whatsapp", "build", "index.html"));
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '/whatsapp/build')));
+  app.get('*', (req, res, next) => {
+    res.sendFile(path.resolve(__dirname, 'whatsapp', 'build', 'index.html'));
   });
 }
 //----deploy-----//
@@ -329,33 +329,33 @@ if (process.env.NODE_ENV === "production") {
 httpServer.listen(port, () => console.log(`Listening on port: ${port}`));
 
 //-------------Socket.IO-----------//
-import { Server } from "socket.io";
-import expressAsyncHandler from "express-async-handler";
+import { Server } from 'socket.io';
+import expressAsyncHandler from 'express-async-handler';
 
 const io = new Server(httpServer, {
   pingTimeout: 600000,
   cors: {
-    origin: "http://localhost:3000",
+    origin: 'http://localhost:3000',
   },
 });
 let myId;
-io.on("connection", (socket) => {
-  socket.on("setup", (id) => {
+io.on('connection', (socket) => {
+  socket.on('setup', (id) => {
     myId = id;
     socket.join(id);
   });
-  socket.on("newMessage", (newMessage) => {
-    socket.in(newMessage.remoteId).emit("message received", newMessage);
+  socket.on('newMessage', (newMessage) => {
+    socket.in(newMessage.remoteId).emit('message received', newMessage);
   });
 
-  socket.on("inRoom", (ids) => {
-    socket.in(ids.remoteId).emit("inRoom", ids.id);
+  socket.on('inRoom', (ids) => {
+    socket.in(ids.remoteId).emit('inRoom', ids.id);
   });
-  socket.on("outRoom", (ids) => {
-    socket.in(ids.remoteId).emit("leave", ids.id);
+  socket.on('outRoom', (ids) => {
+    socket.in(ids.remoteId).emit('leave', ids.id);
   });
 
-  socket.off("setup", () => {
+  socket.off('setup', () => {
     socket.leave(myId);
   });
 });

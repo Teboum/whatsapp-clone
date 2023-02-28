@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
 
 const chatModel = mongoose.Schema(
   {
@@ -7,7 +7,7 @@ const chatModel = mongoose.Schema(
     users: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "user",
+        ref: 'user',
       },
     ],
     lastMessage: String,
@@ -17,4 +17,4 @@ const chatModel = mongoose.Schema(
   }
 );
 
-export default mongoose.model("chat", chatSchema);
+export default mongoose.model('chat', chatSchema);
