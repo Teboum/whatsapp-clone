@@ -1,24 +1,24 @@
-import React, { useEffect, useRef, useState } from "react";
-import "./Chat.css";
-import { Avatar, IconButton } from "@material-ui/core";
-import { SearchOutlined, MoreVert } from "@material-ui/icons";
-import InsertEmoticonIcon from "@material-ui/icons/InsertEmoticon";
-import MicIcon from "@material-ui/icons/Mic";
-import { BiLogOut } from "react-icons/bi";
-import SendIcon from "@material-ui/icons/Send";
-import axios from "./axios";
-import { ChatState } from "./context/CharProvider";
-import io from "socket.io-client";
-import { useReactMediaRecorder } from "react-media-recorder";
-import CancelIcon from "@material-ui/icons/Cancel";
-import Audio from "./Audio";
-import Cookies from "js-cookie";
+import React, { useEffect, useRef, useState } from 'react';
+import './Chat.css';
+import { Avatar, IconButton } from '@material-ui/core';
+import { SearchOutlined, MoreVert } from '@material-ui/icons';
+import InsertEmoticonIcon from '@material-ui/icons/InsertEmoticon';
+import MicIcon from '@material-ui/icons/Mic';
+import { BiLogOut } from 'react-icons/bi';
+import SendIcon from '@material-ui/icons/Send';
+import axios from './axios';
+import { ChatState } from './context/CharProvider';
+import io from 'socket.io-client';
+import { useReactMediaRecorder } from 'react-media-recorder';
+import CancelIcon from '@material-ui/icons/Cancel';
+import Audio from './Audio';
+import Cookies from 'js-cookie';
 
-const ENDPOINT = "http://localhost:9000";
+const ENDPOINT = 'http://localhost:9000';
 var socket;
 
 function Chat() {
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState('');
   const [messages, setMessages] = useState([]);
   const [inRoom, setInRoom] = useState([]);
   const [displayNotifications, setDisplayNotifications] = useState(false);
@@ -64,9 +64,9 @@ function Chat() {
           (file) =>
             new File(
               [file],
-              selectedUser._id + "-" + user._id + "-" + Date.now(),
+              selectedUser._id + '-' + user._id + '-' + Date.now(),
               {
-                type: "audio/wav",
+                type: 'audio/wav',
               }
             )
         )
@@ -78,7 +78,7 @@ function Chat() {
       socketRef.current = io(ENDPOINT);
     }
     socket = socketRef.current;
-    socket.emit("setup", user._id);
+    socket.emit('setup', user._id);
 
     return () => socket.close();
   }, []);
@@ -92,7 +92,7 @@ function Chat() {
   }, [messages]);
 
   useEffect(() => {
-    socket.on("message received", (newMessage) => {
+    socket.on('message received', (newMessage) => {
       setLimit((e) => e++);
       if (
         selectedChat._id &&
@@ -155,7 +155,7 @@ function Chat() {
         }
       });
     });
-    socket.on("inRoom", (id) => {
+    socket.on('inRoom', (id) => {
       if (inRoom.find((e) => e.id === id)) {
         setInRoom((prev) => {
           let state = [...prev];
@@ -169,7 +169,7 @@ function Chat() {
         });
       }
     });
-    socket.on("leave", (id) => {
+    socket.on('leave', (id) => {
       if (inRoom.find((e) => e.id === id && selectedChat._id)) {
         setInRoom((prev) => {
           let state = [...prev];
@@ -195,7 +195,7 @@ function Chat() {
       setSelectedUser(selectedChat.users.find((e) => e._id !== user._id));
       setMessages([]);
       if (remoteId) {
-        socket.emit("outRoom", {
+        socket.emit('outRoom', {
           id: user._id,
           remoteId: remoteId,
         });
@@ -204,7 +204,7 @@ function Chat() {
         .get(`/messages/sync?chatId=${selectedChat._id}`)
         .then(({ data }) => {
           setMessages(data);
-          socket.emit("inRoom", {
+          socket.emit('inRoom', {
             id: user._id,
             remoteId: selectedChat.users.find((e) => {
               return e._id !== user._id;
@@ -222,18 +222,18 @@ function Chat() {
     if (input || media) {
       var formData = new FormData();
       media
-        ? formData.append("message", media, media.name)
-        : formData.append("message", input);
+        ? formData.append('message', media, media.name)
+        : formData.append('message', input);
 
-      formData.append("sender", user._id);
-      formData.append("_id", selectedChat._id);
-      formData.append("userName", user.name);
+      formData.append('sender', user._id);
+      formData.append('_id', selectedChat._id);
+      formData.append('userName', user.name);
 
       var date = new Date();
       date = date.toString();
       try {
-        const { data } = await axios.post("messages/new", formData);
-        socket.emit("newMessage", {
+        const { data } = await axios.post('messages/new', formData);
+        socket.emit('newMessage', {
           message: media ? data.message : input,
           vocal: media ? true : false,
           sender: user._id,
@@ -286,7 +286,7 @@ function Chat() {
       } catch (err) {
         console.log(err);
       }
-      setInput("");
+      setInput('');
     }
   };
 
@@ -329,11 +329,11 @@ function Chat() {
   //   }
   // };
   const logout = () => {
-    setUser("");
-    localStorage.setItem("user", false);
-    Cookies.set("token", false);
-    sessionStorage.setItem("image", "");
-    sessionStorage.setItem("selectedChat", "");
+    setUser('');
+    localStorage.setItem('user', false);
+    Cookies.set('token', false);
+    sessionStorage.setItem('image', '');
+    sessionStorage.setItem('selectedChat', '');
   };
   return (
     <div className="chat">
@@ -349,15 +349,15 @@ function Chat() {
             inRoom.find(
               (e) =>
                 e.id === selectedChat.users.find((e) => e._id !== user._id)._id
-            ).status && <strong style={{ color: "green" }}>In Room</strong>}
+            ).status && <strong style={{ color: 'green' }}>In Room</strong>}
         </div>
         <div className="chat__headerRight">
           <IconButton onClick={logout}>
-            <BiLogOut style={{ color: "red" }} title="Logout" />
+            <BiLogOut style={{ color: 'red' }} title="Logout" />
           </IconButton>
           <IconButton
             title="New Message"
-            style={{ position: "relative" }}
+            style={{ position: 'relative' }}
             onClick={() =>
               notifications.length > 0 &&
               setDisplayNotifications(!displayNotifications)
@@ -367,9 +367,9 @@ function Chat() {
 
             {!displayNotifications && (
               <span
-                style={{ marginLeft: "2px" }}
+                style={{ marginLeft: '2px' }}
                 className={
-                  notifications.length > 0 ? "notifications-number" : null
+                  notifications.length > 0 ? 'notifications-number' : null
                 }
               >
                 {notifications.length}
@@ -382,16 +382,16 @@ function Chat() {
                   <li
                     key={i}
                     style={{
-                      borderBottom: "1px solid black",
-                      listStyleType: "none",
+                      borderBottom: '1px solid black',
+                      listStyleType: 'none',
                     }}
                     className="notification"
                     onClick={() => notificationsHandler(e, i)}
                   >
                     <span
                       style={{
-                        paddingRight: "6px",
-                        borderRight: "1px solid black",
+                        paddingRight: '6px',
+                        borderRight: '1px solid black',
                       }}
                     >
                       {e.senderName.charAt(0).toUpperCase() +
@@ -399,7 +399,7 @@ function Chat() {
                     </span>
                     <span
                       style={{
-                        paddingLeft: "4px",
+                        paddingLeft: '4px',
                       }}
                     >
                       {e.message}
@@ -435,7 +435,7 @@ function Chat() {
                 <p
                   key={i}
                   className={`chat__message ${
-                    message.sender === user._id && "chat__receiver"
+                    message.sender === user._id && 'chat__receiver'
                   }`}
                   ref={i === messages.length - 1 ? chatMessage : null}
                 >
@@ -468,12 +468,12 @@ function Chat() {
           </form>
           {!media ? (
             <>
-              <p style={{ position: "absolute", right: "10%", bottom: "0%" }}>
+              <p style={{ position: 'absolute', right: '10%', bottom: '0%' }}>
                 {status}
               </p>
               <SendIcon
-                style={{ cursor: "pointer" }}
-                title={"Send"}
+                style={{ cursor: 'pointer' }}
+                title={'Send'}
                 onClick={sendMessage}
               />
               <MicIcon
@@ -486,20 +486,20 @@ function Chat() {
             <>
               <CancelIcon
                 style={{
-                  color: "red",
-                  backgroundColor: "lightgrey",
-                  cursor: "pointer",
+                  color: 'red',
+                  backgroundColor: 'lightgrey',
+                  cursor: 'pointer',
                 }}
-                title={"cancel"}
+                title={'cancel'}
                 onClick={(e) => setMedia(null)}
-              />{" "}
+              />{' '}
               <SendIcon
-                style={{ cursor: "pointer" }}
-                title={"Send"}
+                style={{ cursor: 'pointer' }}
+                title={'Send'}
                 onClick={sendMessage}
               />
             </>
-          )}{" "}
+          )}{' '}
         </div>
       )}
     </div>

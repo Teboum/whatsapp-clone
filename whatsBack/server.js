@@ -92,7 +92,7 @@ app.get('/messages/sync', async (req, res) => {
     .sort({ messages: 1 })
     .exec(async function (err, data) {
       if (err) res.status(500).json({ error: err.message });
-      else res.status(200).send(data.messages);
+      else res.status(200).send(data.messages || []);
     });
 });
 
