@@ -110,7 +110,7 @@ app.post(
     }),
   }).single('message'),
   (req, res) => {
-    if (req.file) req.body.message = req.file.filename;
+    if (req.file) req.body.message = req.file.originalname + '.wav';
     const dbMessage = { ...req.body };
     delete dbMessage.userId;
     Messages.updateOne(
@@ -300,6 +300,7 @@ app.get(
 app.get('/getAudio', (req, res) => {
   res.set('content-type', 'audio/wav');
   res.set('accept-ranges', 'bytes');
+  console.log(req.query);
   const rStream = fs.createReadStream('./vocals/' + req.query._id);
 
   rStream.on('data', (chunkData) => {
