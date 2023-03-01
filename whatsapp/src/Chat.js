@@ -14,7 +14,7 @@ import CancelIcon from '@material-ui/icons/Cancel';
 import Audio from './Audio';
 import Cookies from 'js-cookie';
 
-const ENDPOINT = 'http://localhost:9000';
+const ENDPOINT = 'https://whatsclone.onrender.com/';
 var socket;
 
 function Chat() {
