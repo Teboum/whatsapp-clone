@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import './Chat.css';
 import { Avatar, IconButton } from '@material-ui/core';
-import { SearchOutlined, MoreVert } from '@material-ui/icons';
+import { MoreVert } from '@material-ui/icons';
 import InsertEmoticonIcon from '@material-ui/icons/InsertEmoticon';
 import MicIcon from '@material-ui/icons/Mic';
 import { BiLogOut } from 'react-icons/bi';
