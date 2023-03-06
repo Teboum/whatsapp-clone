@@ -11,7 +11,7 @@ const Audio = ({ message }) => {
       style={{
         marginLeft: message.sender === user._id ? 'auto' : null,
       }}
-      src={'http://localhost:9000/getAudio?_id=' + message.message}
+      src={'/getAudio?_id=' + message.message}
       controls
     />
   );

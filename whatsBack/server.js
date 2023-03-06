@@ -301,7 +301,9 @@ app.get('/getAudio', (req, res) => {
   res.set('content-type', 'audio/wav');
   res.set('accept-ranges', 'bytes');
   console.log(req.query);
-  const rStream = fs.createReadStream('./vocals/' + req.query._id);
+  const rStream = fs.createReadStream(
+    path.join(__dirname, '/vocals/' + req.query._id)
+  );
 
   rStream.on('data', (chunkData) => {
     res.write(chunkData);
